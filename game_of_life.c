@@ -3,8 +3,8 @@
 #include <time.h>
 #include <windows.h> //Windows specific
 
-#define XDIM 64
-#define YDIM 64
+#define XDIM 32
+#define YDIM 32
 
 #define DEAD 0
 #define ALIVE 1
@@ -24,7 +24,9 @@ int alive_cells(const int*);
 void copy(int*,const int*);
 void shift_history(int*);
 void evolution_step(int*);
-void display_stats(const int*, int);
+void display_stats(const int*, int, int);
+int equal(const int*, const int*);
+int oscillating(const int*, int*);
 
 /*
 //
@@ -35,6 +37,7 @@ int main(int argc, char* argv[])
 {
 	int cells[HISTORY_SIZE][XDIM][YDIM];
 	int gen = 1;
+	int osc = 0;
 	srand(time(NULL));
 	init_cells((int*) cells);
 	while (alive_cells((int*)cells))
@@ -42,13 +45,16 @@ int main(int argc, char* argv[])
 		system("cls"); //Windows specific
 		display_cells((int*) cells);
 		evolution_step((int*) cells);
-		display_stats((int*) cells, gen);
-		gen++;
+		if (osc == 0)
+			oscillating((int*)cells, &osc);
+		display_stats((int*) cells, gen, osc);
+		if (osc == 0)
+			gen++;
 		Sleep(SIM_SPEED); //Windows specific
 	}
 	system("cls"); //Windows specific
 	display_cells((int*) cells);
-	display_stats((int*) cells, gen);
+	display_stats((int*) cells, gen, osc);
 }
 
 /*
@@ -183,16 +189,46 @@ void evolution_step(int* cells)
 // Display statistics about the history of population development
 //
 */
-void display_stats(const int* cells, int gen)
+void display_stats(const int* cells, int gen, int osc)
 {
 	printf("\n\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 	printf("\nStats: Generation %6d\n", gen);
-	printf("\nAnzahl lebender Zellen: %05d / %05d === %5.2f%c", alive_cells(cells), XDIM * YDIM, alive_cells(cells) / (float)(XDIM * YDIM) * 100, 37);
-	printf("\nAnzahl toter Zellen:    %05d / %05d === %5.2f%c", XDIM * YDIM - alive_cells(cells), XDIM * YDIM, (XDIM * YDIM - alive_cells(cells)) / (float)(XDIM * YDIM) * 100, 37);
-	printf("\nVeraenderung zur letzten Generation: %4d lebende Zellen", alive_cells(cells) - alive_cells(cells + XDIM * YDIM));
+	printf("\nNumber of Living Cells:       %05d / %05d === %5.2f%c", alive_cells(cells), XDIM * YDIM, alive_cells(cells) / (float)(XDIM * YDIM) * 100, 37);
+	printf("\nNumber of Dead Cells:         %05d / %05d === %5.2f%c", XDIM * YDIM - alive_cells(cells), XDIM * YDIM, (XDIM * YDIM - alive_cells(cells)) / (float)(XDIM * YDIM) * 100, 37);
+	printf("\nChange to last Generation:     %4d cells", alive_cells(cells) - alive_cells(cells + XDIM * YDIM));
+	printf("\nStable state / Oscillating? : %s (%d steps)", (osc == 0 ? "NO" : "YES"), osc);
 	printf("\n\n\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 }
 
+/*
+//
+// Check, whether states are equal
+//
+*/
+int equals(const int* cells_a, const int* cells_b)
+{
+	for (int y = 0; y < YDIM; y++)
+		for (int x = 0; x < XDIM; x++)
+			if (*(cells_a + y * XDIM + x) != *(cells_b + y * XDIM + x))
+				return 0;
+	return 1;
+}
+
+/*
+//
+// Check, whether a state is stable / oscillating
+//
+*/
+int oscillating(const int* cells, int* osc)
+{
+	for (int a = 1; a < HISTORY_SIZE; a++)
+		if (equals(cells, cells + a * XDIM * YDIM))
+		{
+			*osc = a;
+			return 1;
+		}
+	return 0;
+}
 
 
 
